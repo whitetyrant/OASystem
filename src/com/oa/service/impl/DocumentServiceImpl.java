@@ -1,0 +1,102 @@
+package com.oa.service.impl;
+
+import com.oa.bean.Document;
+import com.oa.bean.PageInfo;
+import com.oa.dao.DocumentDao;
+import com.oa.service.DocumentService;
+
+import javax.servlet.http.Part;
+import java.io.*;
+import java.util.List;
+
+public class DocumentServiceImpl implements DocumentService {
+
+    //获取Dao层的对象
+    DocumentDao documentDao = new DocumentDao();
+
+    @Override
+    public boolean insertDocument(Document document, Part part) {
+        System.out.println("进入了impl类");
+        //1、实现文件上传
+        String filename = null;
+        try {
+            filename = upload(part);
+        } catch (IOException e) {
+            //打印异常信息跟踪栈
+            e.printStackTrace();
+            return false;//说明操作失败
+        }
+        //2、判断是否有图片数据、以及进行数据设置到user对象中
+        if (filename != null && !filename.equals("")) {
+            document.setFilename(filename);
+        }
+        System.out.println("准备进入dao类");
+        //3、实现数据添加的操作
+        return documentDao.insertDocument(document);
+    }
+
+    //定义一个文件上传的方法，返回文件名
+    public String upload(Part part) throws IOException {//Part是一个文件区域的对象
+        //1、获取文件名
+        //--part.getHeader("Content-Disposition")
+        String disposition = part.getHeader("Content-Disposition");
+        System.out.println(disposition);
+        //--获取字符串截取的起始位置
+        int start = disposition.indexOf("filename=\"") + 10;
+//        int start = disposition.lastIndexOf("\\")+1;\\
+        //--获取字符串截取的结束位置
+        int end = disposition.lastIndexOf("\"");
+        //--截取字符串
+        String fileName = disposition.substring(start, end);
+        //判断是否为空字符串，没有文件，则返回null
+        if (fileName.equals("")) {
+            return null;
+        }
+        // 2、定义一个文件路径用于存放文件
+        String path = "C:\\Users\\www10\\Desktop\\OA存放文件";
+        // 3、获取来自网络端上传的文件，以流的形式来获取 ：输入流
+        BufferedInputStream bis = new BufferedInputStream(part.getInputStream());
+        // 4、定义字节缓冲数据，用于缓冲输入流的数据
+        byte[] buff = new byte[1024];
+        // 定义一个int变量，用于存放单次读取数据的字节个数
+        int len = 0;
+        // 5、创建文件对象
+        File file = new File(path + File.separator + fileName);
+        // 6、创建输出流，并通过输出流将文件写到硬盘
+        BufferedOutputStream bos = new BufferedOutputStream(new FileOutputStream(file));
+        // 7、进行循环的读写操作
+        while ((len = bis.read(buff)) != -1) {//读取--读取到缓冲字节数组中
+            //写出
+            bos.write(buff, 0, len);
+            //刷新流
+            bos.flush();
+        }
+        // 8、关闭流
+        bis.close();
+        bos.close();
+        //返回文件名
+        return fileName;
+    }
+
+    @Override
+    public boolean deleteDocument(int id, String filename) {
+        //1、删除数据
+        boolean isok = documentDao.deleteDocument(id);
+        if (!isok) {
+            return false;
+        }
+        //2、删除文件
+        String path = "C:\\Users\\www10\\Desktop\\OA存放文件";
+        File file = new File(path + File.separator + filename);
+        boolean del = file.delete();
+//        System.out.println("del:"+del);
+        return isok;
+    }
+
+
+    @Override
+    public List<Document> queryDocument(PageInfo page, String search) {
+        return documentDao.queryDocument(page, search);
+    }
+
+}
